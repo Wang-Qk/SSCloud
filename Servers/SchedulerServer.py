@@ -168,10 +168,144 @@ def process_crawled_data(filename):
     :param filename:
     :return:
     """
+    un_zip(filename)
     with open(CRAWLDIR + filename, 'r', encoding='utf-8') as f:
         with open(TEMPDIR + filename, 'w', encoding='utf-8') as wf:
             for line in f:
                 wf.write('[Scheduler Server]-' + line)
+                
+def sql_loader_comment(content,zip_file_name):
+    text = json.loads(content)
+    #连接数据库
+    db = pymysql.connect(host='59.110.174.5', port=3306, user='root', passwd='sherlock', db='stock_db', charset='utf8')
+    # 使用cursor()方法获取操作游标
+    cursor = db.cursor()
+    stock_info = text["stock_info"]
+    stock_name = stock_info["stock_name"]
+    stock_id = stock_info["stock_id"]
+    comment_list = text["comment_list"]
+    comment_num = 0
+    for i in comment_list:
+        comment_id = comment_num
+        comment_num = comment_num + 1
+        comment_name = i["author"]
+        comment_info = i["title"]
+        read_number = i["read_num"]
+        comment_number = i["comment_num"]#这里需要修改数据库的字段值
+        time_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(comment_info)
+        #sentiment_value
+        update_time = zip_file_name
+        #update_time = i["update_time"]#设置成数据库识别的格式
+        #datetime.striptime(update_time,"%m-%d %h-%m")
+        #print(update_time)
+        sql = "INSERT INTO stock_comment_info(stock_id,stock_name,comment_id,comment_name,comment_info,read_number,comment_number,update_time,time) \
+            values('%s','%s','%d','%s','%s','%d','%d','%s','%s')" \
+          % (stock_id,stock_name,comment_id,comment_name,comment_info,read_number,comment_number,update_time,time_now)
+        cursor.execute(sql)
+        # try:
+        #     cursor.execute(sql)
+        # except:
+        #     print("sql error in "+comment_info)
+        #     pass
+    db.commit()
+    # 关闭数据库连接
+    db.close()
+def sql_loader_news(content,zip_file_name):
+    text = json.loads(content)
+    #连接数据库
+    db = pymysql.connect(host='59.110.174.5', port=3306, user='root', passwd='sherlock', db='stock_db', charset='utf8')
+    # 使用cursor()方法获取操作游标
+    cursor = db.cursor()
+    for i in text:
+        news_info = i["content"]
+        news_source = i["source"]
+        #comment_number
+        quote_words = i["quote_words"]
+        keywords = quote_words.keys
+
+        #read_number
+        url = i["url"]
+        time_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        #update_time = i["time"]
+        update_time = zip_file_name
+        abstract = i["abstract"]
+        print(news_info)
+        sql = "INSERT INTO news_info(news_info,news_source,keywords,url,time,update_time,abstract) \
+            values('%s','%s','%s','%s','%s','%s','%s')" \
+          % (news_info,news_source,str(keywords),url,time_now,update_time,abstract)
+        cursor.execute(sql)
+        # try:
+        #     cursor.execute(sql)
+        # except:
+        #     print("sql error in "+comment_info)
+        #     pass
+    db.commit()
+    # 关闭数据库连接
+    db.close()
+
+def sql_loader_stockvalue(content,zip_file_name):
+    #这部分还得看爬虫模块传回来的数据格式
+    text = json.loads(content)
+    #连接数据库
+    db = pymysql.connect(host='59.110.174.5', port=3306, user='root', passwd='sherlock', db='stock_db', charset='utf8')
+    # 使用cursor()方法获取操作游标
+    cursor = db.cursor()
+    for i in text:
+        stock_id = i["stock_id"]
+        stock_name = i["stock_name"]
+        value_list = i["value_list"]
+        time_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        #update_time = i["time"]
+        update_time = zip_file_name
+        sql = "INSERT INTO stock_value_info(stock_id,stock_name,value_list,time,update_time) \
+            values('%s','%s','%s','%s','%s')" \
+          % (stock_id,stock_name,value_list,time_now,update_time)
+        cursor.execute(sql)
+        # try:
+        #     cursor.execute(sql)
+        # except:
+        #     print("sql error in "+comment_info)
+        #     pass
+    db.commit()
+    # 关闭数据库连接
+    db.close()
+
+def un_zip(file_path):
+    """unzip zip file"""
+    #file_name是zip文件路径,例如file_name = /Users/songdi/Documents/2020秋课堂资料/云计算技术/data/2021-1-16.zip
+    zip_file = zipfile.ZipFile(file_path)
+    #获取不带.zip的zip文件路径,例如zip_path = /Users/songdi/Documents/2020秋课堂资料/云计算技术/data/2021-1-16
+    (zip_path,ext) = os.path.splitext(file_path)
+    #获取zip文件名，file_name_1 = 2020-1-16.zip
+    (path_1,file_name_1) = os.path.split(file_path)
+    #获取zip文件名日期,zip_file_name = 2021-1-16
+    (zip_file_name,ext) = os.path.splitext(file_name_1)
+    #print(zip_file_name)
+    #print(zip_path)
+    if os.path.isdir(zip_path + "_files"):
+        pass
+    else:
+        os.mkdir(zip_path + "_files")
+    for names in zip_file.namelist():
+        zip_file.extract(names,zip_path + "_files/")
+    for names in zip_file.namelist():
+        path = zip_path+"_files/"+names
+        #存储路径为/Users/songdi/Documents/2020秋课堂资料/云计算技术/data/2021-1-16_files
+        #print(path)
+        if names == "news.json":
+            with open(path, 'r') as f:
+                for content in f.readlines():
+                    sql_loader_news(content,zip_file_name)
+        if names == "comment.json":
+            with open(path, 'r') as f:
+                for content in f.readlines():
+                    sql_loader_comment(content,zip_file_name)
+        if names == "stock_value.json":
+            with open(path, 'r') as f:
+                for content in f.readlines():
+                    sql_loader_stockvalue(content,zip_file_name)
+    zip_file.close()
 
 def process_parsed_data(filename):
     """
