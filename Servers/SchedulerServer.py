@@ -108,8 +108,8 @@ class SchedulerServer(object):
                     'filename': filename,
                     'url': self.download_url
                 }
-                print(f'>>>>>>INFO: Send command: [ParseData] to Parser Server')
-                self.send_command(self._parse_cmd_queue, command)
+                #print(f'>>>>>>INFO: Send command: [ParseData] to Parser Server')
+                #self.send_command(self._parse_cmd_queue, command)
 
             elif code == 201:
                 command = {
