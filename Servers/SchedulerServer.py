@@ -7,6 +7,9 @@ import pika
 import json
 import datetime
 import time
+import os
+import zipfile
+import pymysql
 from apscheduler.schedulers.background import BackgroundScheduler
 from config import *
 
